@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
@@ -21,10 +20,20 @@ namespace PackageVersionUpdater
                 Name = GetProcessName(),
             };
 
-            command.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
-            command.AddOption(new Option<bool>("--verbose"));
+            var moveCommand = new Command("mv");
+            moveCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            moveCommand.AddArgument(new Argument<FileInfo>("project").ExistingOnly());
+            moveCommand.AddArgument(new Argument<DirectoryInfo>("destination"));
+            moveCommand.AddOption(new Option<bool>("--verbose"));
+            moveCommand.Handler = CommandHandler.Create<FileInfo, FileInfo, bool>(RunMoveAsync);
 
-            command.Handler = CommandHandler.Create<FileInfo, bool>(RunAsync);
+            var nuGetCommand = new Command("nuget");
+            nuGetCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            nuGetCommand.AddOption(new Option<bool>("--verbose"));
+            nuGetCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
+
+            command.Add(moveCommand);
+            command.Add(nuGetCommand);
 
             return command.InvokeAsync(args);
 
@@ -34,15 +43,28 @@ namespace PackageVersionUpdater
                 return current.ProcessName;
             }
 
-            static Task RunAsync(FileInfo sln, bool verbose)
+            static Task RunMoveAsync(FileInfo sln, FileInfo project, bool verbose)
+                => RunAsync(services =>
+                {
+                    services.AddMSBuild();
+                }, verbose);
+
+            static Task RunNuGetAsync(FileInfo sln, bool verbose)
+                => RunAsync(services =>
+                {
+                    services.AddMSBuild();
+                    services.AddPackageReferenceUpdater(options =>
+                    {
+                        options.Path = sln.FullName;
+                    });
+                }, verbose);
+
+            static Task RunAsync(Action<IServiceCollection> serviceAction, bool verbose)
                 => Host.CreateDefaultBuilder()
                     .ConfigureServices((ctx, services) =>
                     {
                         services.AddHostedService<MainHost>();
-                        services.AddPackageReferenceUpdater(options =>
-                        {
-                            options.Path = sln.FullName;
-                        });
+                        serviceAction(services);
                     })
                     .ConfigureLogging(builder =>
                     {

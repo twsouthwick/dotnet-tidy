@@ -29,8 +29,6 @@ namespace PackageVersionUpdater
                 return Task.CompletedTask;
             }
 
-            _logger.LogInformation("Registered MSBuild at {Path}", _registrar.Instance);
-
             var projectCollection = new ProjectCollection();
             var sln = Microsoft.Build.Construction.SolutionFile.Parse(_options.Path);
 
@@ -53,7 +51,7 @@ namespace PackageVersionUpdater
             {
                 var name = Path.GetFileName(project.FullPath);
 
-                _logger.LogWarning("Searching {Project} for NuGet references", name);
+                _logger.LogInformation("Searching {Project} for NuGet references", name);
 
                 foreach (var reference in project.Items.Where(i => i.ItemType.Equals("PackageReference", System.StringComparison.OrdinalIgnoreCase)))
                 {

@@ -31,9 +31,12 @@ namespace PackageVersionUpdater
 
                 if (_versions.TryGetValue(packageName, out var existing))
                 {
-                    if (existing.CompareTo(packageVersion) < 0)
+                    var compared = existing.CompareTo(packageVersion);
+
+                    if (compared < 0)
                     {
-                        _logger.LogWarning("{Project} is using an out-of-date version ({Version}) of {PackageName}", projectName, version, projectName);
+                        _logger.LogWarning("{PackageName} is out of date for a project ({Version} < {NewVersion})", packageName, existing, version);
+                        _versions[packageName] = packageVersion;
                     }
                 }
                 else

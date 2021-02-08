@@ -10,7 +10,6 @@ namespace PackageVersionUpdater
             services.AddOptions<UpdaterOptions>()
                 .Configure(configure);
 
-            services.AddSingleton(new Registrar());
             services.AddTransient<IApplication, PackageUpdater>();
         }
     }
