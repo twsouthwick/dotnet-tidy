@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "PackageVersionUpdater": {
+      "commandName": "Project",
+      "commandLineArgs": "E:\\Work\\migration\\AspNetMigrator\\AspNetMigrator.sln --verbose"
+    }
+  }
+}
