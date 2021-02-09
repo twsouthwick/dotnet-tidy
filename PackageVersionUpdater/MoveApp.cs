@@ -120,16 +120,13 @@ namespace PackageVersionUpdater
                     parentDir.Create();
                 }
 
-                Directory.Move(project.DirectoryPath, Path.GetDirectoryName(expected.Path));
-
-                projectCollection.UnloadProject(project);
-                projectCollection.LoadProject(expected.Path);
-
                 var slnFile = File.ReadAllText(_options.SolutionPath);
                 var updatedSln = slnFile.Replace(actualRelative.Path, expectedRelative.Path);
                 File.WriteAllText(_options.SolutionPath, updatedSln);
 
                 MoveProject(projectCollection, expected.Path, actual.Path);
+
+                Directory.Move(project.DirectoryPath, Path.GetDirectoryName(expected.Path));
 
                 return true;
             }
@@ -178,11 +175,15 @@ namespace PackageVersionUpdater
         {
             foreach (var p in projects.LoadedProjects)
             {
+                if (p.FullPath.Contains("console", StringComparison.OrdinalIgnoreCase))
+                {
+
+                }
                 foreach (var r in p.GetItems("ProjectReference"))
                 {
-                    var fullPath = Path.GetFullPath(r.EvaluatedInclude, Path.GetDirectoryName(actual));
+                    var fullPath = Path.GetFullPath(r.EvaluatedInclude, p.DirectoryPath);
 
-                    if (string.Equals(p.FullPath, dest, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(p.FullPath, actual, StringComparison.OrdinalIgnoreCase))
                     {
                         r.UnevaluatedInclude = Path.GetRelativePath(Path.GetDirectoryName(dest), fullPath);
                     }
@@ -190,7 +191,6 @@ namespace PackageVersionUpdater
                     {
                         r.UnevaluatedInclude = Path.GetRelativePath(p.DirectoryPath, dest);
                     }
-                    else
                     {
 
                     }
