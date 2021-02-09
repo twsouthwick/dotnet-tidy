@@ -50,7 +50,17 @@ namespace PackageVersionUpdater
                 return Task.CompletedTask;
             }
 
-            var projectCollection = new ProjectCollection();
+            Run();
+            //while (Run())
+            //{
+            //}
+
+            return Task.CompletedTask;
+        }
+
+        private bool Run()
+        {
+            using var projectCollection = new ProjectCollection();
             var sln = Microsoft.Build.Construction.SolutionFile.Parse(_options.SolutionPath);
             var d = new Dictionary<string, (RelativePath Expected, RelativePath Actual)>();
 
@@ -71,9 +81,13 @@ namespace PackageVersionUpdater
                 if (project.ProjectType == Microsoft.Build.Construction.SolutionProjectType.KnownToBeMSBuildFormat)
                 {
                     var dir = Path.Combine(GetParentPath(project.ProjectGuid), Path.GetFileName(project.AbsolutePath));
+                    var actual = new RelativePath(project.RelativePath);
+                    var expected = new RelativePath(dir);
 
-                    d.Add(project.ProjectName, (new RelativePath(dir), new RelativePath(project.RelativePath)));
-                    _logger.LogTrace("Loading {Project}", project.ProjectName);
+                    if (!expected.Equals(actual))
+                    {
+                        d.Add(project.ProjectName, (expected, actual));
+                    }
 
                     projectCollection.LoadProject(project.AbsolutePath);
                 }
@@ -88,16 +102,17 @@ namespace PackageVersionUpdater
             foreach (var project in projectCollection.LoadedProjects)
             {
                 var projectName = Path.GetFileNameWithoutExtension(project.FullPath);
-                var (expectedRelative, actualRelative) = d[projectName];
 
-                if (expectedRelative.Equals(actualRelative))
+                if (!d.TryGetValue(projectName, out var result))
                 {
-                    _logger.LogInformation("{Project} is where it should be", Path.GetFileName(project.FullPath));
                     continue;
                 }
 
-                var actual = new AbsolutePath(slnDir, actualRelative);
+                _logger.LogInformation("Updating directory for {Project}", Path.GetFileName(project.FullPath));
+
+                var (expectedRelative, actualRelative) = result;
                 var expected = new AbsolutePath(slnDir, expectedRelative);
+                var actual = new AbsolutePath(slnDir, actualRelative);
 
                 var parentDir = Directory.GetParent(expected.Path).Parent;
                 if (!parentDir.Exists)
@@ -114,12 +129,12 @@ namespace PackageVersionUpdater
                 var updatedSln = slnFile.Replace(actualRelative.Path, expectedRelative.Path);
                 File.WriteAllText(_options.SolutionPath, updatedSln);
 
-                MoveProject(projectCollection, project, expected.Path);
+                MoveProject(projectCollection, expected.Path, actual.Path);
 
-                break;
+                return true;
             }
 
-            return Task.CompletedTask;
+            return false;
         }
 
 
@@ -159,26 +174,25 @@ namespace PackageVersionUpdater
             public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Path);
         }
 
-        private void MoveProject(ProjectCollection projects, Project project, string dest)
+        private void MoveProject(ProjectCollection projects, string dest, string actual)
         {
             foreach (var p in projects.LoadedProjects)
             {
                 foreach (var r in p.GetItems("ProjectReference"))
                 {
-                    var fullPath = Path.GetFullPath(r.EvaluatedInclude, p.DirectoryPath);
+                    var fullPath = Path.GetFullPath(r.EvaluatedInclude, Path.GetDirectoryName(actual));
 
                     if (string.Equals(p.FullPath, dest, StringComparison.OrdinalIgnoreCase))
                     {
-                        var path = Path.GetRelativePath(dest, fullPath);
-                        r.UnevaluatedInclude = path;
+                        r.UnevaluatedInclude = Path.GetRelativePath(Path.GetDirectoryName(dest), fullPath);
+                    }
+                    else if (string.Equals(fullPath, actual, StringComparison.OrdinalIgnoreCase))
+                    {
+                        r.UnevaluatedInclude = Path.GetRelativePath(p.DirectoryPath, dest);
                     }
                     else
                     {
-                        if (string.Equals(project.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
-                        {
-                            var path = Path.GetRelativePath(p.DirectoryPath, dest);
-                            r.UnevaluatedInclude = path;
-                        }
+
                     }
                 }
 
