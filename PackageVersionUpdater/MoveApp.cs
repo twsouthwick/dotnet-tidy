@@ -50,10 +50,10 @@ namespace PackageVersionUpdater
                 return Task.CompletedTask;
             }
 
-            Run();
-            //while (Run())
-            //{
-            //}
+            //Run();
+            while (Run())
+            {
+            }
 
             return Task.CompletedTask;
         }
