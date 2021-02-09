@@ -25,7 +25,7 @@ namespace PackageVersionUpdater
             moveCommand.AddArgument(new Argument<FileInfo>("project").ExistingOnly());
             moveCommand.AddArgument(new Argument<DirectoryInfo>("destination"));
             moveCommand.AddOption(new Option<bool>("--verbose"));
-            moveCommand.Handler = CommandHandler.Create<FileInfo, FileInfo, bool>(RunMoveAsync);
+            moveCommand.Handler = CommandHandler.Create<FileInfo, FileInfo, DirectoryInfo, bool>(RunMoveAsync);
 
             var nuGetCommand = new Command("nuget");
             nuGetCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
@@ -43,10 +43,16 @@ namespace PackageVersionUpdater
                 return current.ProcessName;
             }
 
-            static Task RunMoveAsync(FileInfo sln, FileInfo project, bool verbose)
+            static Task RunMoveAsync(FileInfo sln, FileInfo project, DirectoryInfo destination, bool verbose)
                 => RunAsync(services =>
                 {
                     services.AddMSBuild();
+                    services.AddMoveHelpers(options =>
+                    {
+                        options.DestinationDirectory = destination.FullName;
+                        options.ProjectPath = project.FullName;
+                        options.SolutionPath = sln.FullName;
+                    });
                 }, verbose);
 
             static Task RunNuGetAsync(FileInfo sln, bool verbose)

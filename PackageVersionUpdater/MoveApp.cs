@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace PackageVersionUpdater
 {
     public static class MoveExtensions
     {
-        public static void AddMoveHelpers(IServiceCollection services, Action<MoveOptions> configure)
+        public static void AddMoveHelpers(this IServiceCollection services, Action<MoveOptions> configure)
         {
             services.AddTransient<IApplication, MoveApp>();
             services.AddOptions<MoveOptions>()
@@ -44,14 +45,8 @@ namespace PackageVersionUpdater
             _logger = logger;
         }
 
-        public Task RunAsync(CancellationToken token)
+        private ProjectCollection LoadCollection()
         {
-            if (!_registrar.IsRegistered)
-            {
-                _logger.LogError("No msbuild could be found!");
-                return Task.CompletedTask;
-            }
-
             var projectCollection = new ProjectCollection();
             var sln = Microsoft.Build.Construction.SolutionFile.Parse(_options.SolutionPath);
 
@@ -68,6 +63,18 @@ namespace PackageVersionUpdater
                 }
             }
 
+            return projectCollection;
+        }
+
+        public Task RunAsync(CancellationToken token)
+        {
+            if (!_registrar.IsRegistered)
+            {
+                _logger.LogError("No msbuild could be found!");
+                return Task.CompletedTask;
+            }
+
+            var projectCollection = LoadCollection();
             var projects = projectCollection.GetLoadedProjects(_options.ProjectPath);
 
             if (projects.Count != 1)
@@ -76,13 +83,45 @@ namespace PackageVersionUpdater
                 return Task.CompletedTask;
             }
 
-            MoveProject(projects.First());
+            MoveProject(projectCollection, projects.First());
             return Task.CompletedTask;
         }
 
-        private void MoveProject(Project project)
+        private void MoveProject(ProjectCollection projects, Project project)
         {
+            var originalName = Path.GetFileName(project.FullPath);
+            var expectedName = Path.GetFileName(_options.DestinationDirectory);
+            var expectedProjectFile = string.Concat(expectedName, Path.GetExtension(originalName));
+            var updatedPath = Path.Combine(_options.DestinationDirectory, expectedProjectFile);
 
+            var parentDir = Directory.GetParent(_options.DestinationDirectory);
+            if (!parentDir.Exists)
+            {
+                parentDir.Create();
+            }
+
+            Directory.Move(project.DirectoryPath, _options.DestinationDirectory);
+            File.Move(Path.Combine(_options.DestinationDirectory, originalName), updatedPath);
+
+            var sln = File.ReadAllText(_options.SolutionPath);
+            var updatedSln = sln.Replace(Path.GetFileNameWithoutExtension(originalName), expectedName);
+            File.WriteAllText(_options.SolutionPath, updatedSln);
+
+            foreach (var p in projects.LoadedProjects)
+            {
+                foreach (var r in p.GetItems("ProjectReference"))
+                {
+                    var fullPath = Path.GetFullPath(r.EvaluatedInclude, p.DirectoryPath);
+
+                    if (string.Equals(project.FullPath, fullPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var path = Path.GetRelativePath(p.DirectoryPath, updatedPath);
+                        r.UnevaluatedInclude = path;
+                    }
+                }
+
+                p.Save();
+            }
         }
     }
 }

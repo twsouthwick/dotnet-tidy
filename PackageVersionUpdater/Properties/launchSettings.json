@@ -2,7 +2,7 @@
   "profiles": {
     "PackageVersionUpdater": {
       "commandName": "Project",
-      "commandLineArgs": "E:\\Work\\migration\\AspNetMigrator\\AspNetMigrator.sln --verbose"
+      "commandLineArgs": "mv E:\\Work\\migration\\AspNetMigrator\\AspNetMigrator.sln \"E:\\Work\\migration\\AspNetMigrator\\src\\AspNetMigrator.BackupUpdater\\AspNetMigrator.BackupUpdater.csproj\" \"E:\\Work\\migration\\AspNetMigrator\\src\\tool\\steps\\Microsoft.UpgradeAssistant.Steps.Backup\"  --verbose"
     }
   }
 }
