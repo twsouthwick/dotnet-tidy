@@ -1,9 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30907.101
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SolutionCleaner", "PackageVersionUpdater\SolutionCleaner.csproj", "{35ECDEAA-FE84-48DB-8DB9-27A1653CEFC7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "dotnet-tidy", "src\dotnet-tidy\dotnet-tidy.csproj", "{35ECDEAA-FE84-48DB-8DB9-27A1653CEFC7}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{99F34C8E-B37A-4075-B834-17C10BEB1406}"
 EndProject

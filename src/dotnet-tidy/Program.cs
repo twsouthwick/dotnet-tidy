@@ -19,20 +19,27 @@ namespace PackageVersionUpdater
                 Name = GetProcessName(),
             };
 
-            var moveCommand = new Command("align");
-            moveCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
-            moveCommand.AddOption(new Option<bool>("--verbose"));
-            moveCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunMoveAsync);
+            var alignCommand = new Command("align");
+            alignCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            alignCommand.AddOption(new Option<bool>("--verbose"));
+            alignCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunMoveAsync);
 
-            var centralManagementCommand= new Command("centrally-managed");
+            var centralManagementCommand = new Command("centrally-managed");
             centralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
             centralManagementCommand.AddOption(new Option<bool>("--verbose"));
             centralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
 
-            var packageManagementCommand= new Command("packages");
-            packageManagementCommand.AddCommand(centralManagementCommand);
+            var packageManagementCommand = new Command("packages")
+            {
+                centralManagementCommand
+            };
 
-            command.Add(moveCommand);
+            var solutionCommand = new Command("sln")
+            {
+                alignCommand
+            };
+
+            command.Add(solutionCommand);
             command.Add(packageManagementCommand);
 
             return command.InvokeAsync(args);
