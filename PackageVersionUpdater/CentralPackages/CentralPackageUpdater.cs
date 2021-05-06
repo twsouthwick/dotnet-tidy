@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace PackageVersionUpdater
 {
-    public partial class PackageUpdater : IApplication
+    public class CentralPackageUpdater : IApplication
     {
         private readonly Registrar _registrar;
-        private readonly ILogger<PackageUpdater> _logger;
+        private readonly ILogger<CentralPackageUpdater> _logger;
         private readonly UpdaterOptions _options;
 
-        public PackageUpdater(Registrar registrar, ILogger<PackageUpdater> logger, IOptions<UpdaterOptions> options)
+        public CentralPackageUpdater(Registrar registrar, ILogger<CentralPackageUpdater> logger, IOptions<UpdaterOptions> options)
         {
             _registrar = registrar;
             _logger = logger;

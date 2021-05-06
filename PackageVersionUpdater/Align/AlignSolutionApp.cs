@@ -1,41 +1,24 @@
 ﻿using Microsoft.Build.Evaluation;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace PackageVersionUpdater
 {
-    public static class MoveExtensions
-    {
-        public static void AddMoveHelpers(this IServiceCollection services, Action<MoveOptions> configure)
-        {
-            services.AddTransient<IApplication, MoveApp>();
-            services.AddOptions<MoveOptions>()
-                .Configure(configure);
-        }
-    }
-
-    public class MoveOptions
-    {
-        public string SolutionPath { get; set; }
-    }
-
-    public class MoveApp : IApplication
+    public class AlignSolutionApp : IApplication
     {
         private readonly Registrar _registrar;
-        private readonly MoveOptions _options;
-        private readonly ILogger<MoveApp> _logger;
+        private readonly AlignOptions _options;
+        private readonly ILogger<AlignSolutionApp> _logger;
 
-        public MoveApp(
+        public AlignSolutionApp(
             Registrar registrar,
-            IOptions<MoveOptions> options,
-            ILogger<MoveApp> logger)
+            IOptions<AlignOptions> options,
+            ILogger<AlignSolutionApp> logger)
         {
             _registrar = registrar;
             _options = options.Value;
@@ -132,43 +115,6 @@ namespace PackageVersionUpdater
             }
 
             return false;
-        }
-
-
-        public readonly struct RelativePath : IEquatable<RelativePath>
-        {
-            public RelativePath(string path)
-            {
-                Path = path;
-            }
-
-            public string Path { get; }
-
-            public RelativePath Append(string path) => new RelativePath(System.IO.Path.Combine(Path, path));
-
-            public bool Equals(RelativePath other)
-                => string.Equals(Path, other.Path, StringComparison.OrdinalIgnoreCase);
-
-            public override bool Equals(object obj) => obj is RelativePath other && Equals(other);
-
-            public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Path);
-        }
-
-        public readonly struct AbsolutePath : IEquatable<AbsolutePath>
-        {
-            public AbsolutePath(string @base, RelativePath path)
-            {
-                Path = System.IO.Path.Combine(@base, path.Path);
-            }
-
-            public string Path { get; }
-
-            public bool Equals(AbsolutePath other)
-                => string.Equals(Path, other.Path, StringComparison.OrdinalIgnoreCase);
-
-            public override bool Equals(object obj) => obj is AbsolutePath other && Equals(other);
-
-            public override int GetHashCode() => StringComparer.OrdinalIgnoreCase.GetHashCode(Path);
         }
 
         private void MoveProject(ProjectCollection projects, string dest, string actual)

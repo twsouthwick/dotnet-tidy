@@ -5,7 +5,6 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace PackageVersionUpdater
@@ -25,13 +24,16 @@ namespace PackageVersionUpdater
             moveCommand.AddOption(new Option<bool>("--verbose"));
             moveCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunMoveAsync);
 
-            var nuGetCommand = new Command("nuget");
-            nuGetCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
-            nuGetCommand.AddOption(new Option<bool>("--verbose"));
-            nuGetCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
+            var centralManagementCommand= new Command("centrally-managed");
+            centralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            centralManagementCommand.AddOption(new Option<bool>("--verbose"));
+            centralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
+
+            var packageManagementCommand= new Command("packages");
+            packageManagementCommand.AddCommand(centralManagementCommand);
 
             command.Add(moveCommand);
-            command.Add(nuGetCommand);
+            command.Add(packageManagementCommand);
 
             return command.InvokeAsync(args);
 
@@ -45,7 +47,7 @@ namespace PackageVersionUpdater
                 => RunAsync(services =>
                 {
                     services.AddMSBuild();
-                    services.AddMoveHelpers(options =>
+                    services.AddSolutionAlignment(options =>
                     {
                         options.SolutionPath = sln.FullName;
                     });
@@ -77,39 +79,6 @@ namespace PackageVersionUpdater
                     {
                         options.SuppressStatusMessages = true;
                     });
-        }
-
-        private class MainHost : BackgroundService
-        {
-            private readonly IServiceProvider _services;
-            private readonly ILogger<MainHost> _logger;
-            private readonly IHostApplicationLifetime _lifetime;
-
-            public MainHost(
-                ILogger<MainHost> logger,
-                IServiceProvider services,
-                IHostApplicationLifetime lifetime)
-            {
-                _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-                _lifetime = lifetime ?? throw new ArgumentNullException(nameof(lifetime));
-                _services = services ?? throw new ArgumentNullException(nameof(services));
-            }
-
-            protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-            {
-                try
-                {
-                    using var scope = _services.CreateScope();
-
-                    var app = scope.ServiceProvider.GetRequiredService<IApplication>();
-
-                    await app.RunAsync(stoppingToken).ConfigureAwait(false);
-                }
-                finally
-                {
-                    _lifetime.StopApplication();
-                }
-            }
         }
     }
 }

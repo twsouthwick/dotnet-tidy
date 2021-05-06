@@ -3,14 +3,14 @@ using System;
 
 namespace PackageVersionUpdater
 {
-    public static class PackageUpdaterExtensions
+    public static class CentralPackageUpdaterExtensions
     {
         public static void AddPackageReferenceUpdater(this IServiceCollection services, Action<UpdaterOptions> configure)
         {
             services.AddOptions<UpdaterOptions>()
                 .Configure(configure);
 
-            services.AddTransient<IApplication, PackageUpdater>();
+            services.AddTransient<IApplication, CentralPackageUpdater>();
         }
     }
 }
