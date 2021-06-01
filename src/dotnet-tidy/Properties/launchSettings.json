@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "PackageVersionUpdater": {
-      "commandName": "Project",
-      "commandLineArgs": "align E:\\Work\\migration\\AspNetMigrator\\Microsoft.UpgradeAssistant.sln    --verbose"
-    }
-  }
-}

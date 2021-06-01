@@ -2,13 +2,14 @@
 using NuGet.Versioning;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
 namespace PackageVersionUpdater
 {
-    public class NuGetReferenceCollection
+    public class NuGetReferenceCollection : IReadOnlyDictionary<string, string>
     {
         private readonly Dictionary<string, SemanticVersion> _versions;
         private readonly ILogger _logger;
@@ -21,9 +22,34 @@ namespace PackageVersionUpdater
             _path = Path.Combine(directory, "Directory.Packages.props");
             _versions = new Dictionary<string, SemanticVersion>();
             _remove = new LinkedList<Action>();
+
+            TryLoad();
         }
 
-        public void Add(string projectName, string packageName, string version, Action remove)
+        private void TryLoad()
+        {
+            _logger.LogError(_path);
+            if (!File.Exists(_path))
+            {
+                return;
+            }
+
+            var doc = XDocument.Load(_path);
+            var items = doc.Root.Descendants("PackageVersion");
+
+            foreach (var item in items)
+            {
+                var include = item.Attribute("Include")?.Value;
+                var version = item.Attribute("Version")?.Value;
+
+                if (include is not null && version is not null)
+                {
+                    Add(include, version, static () => { });
+                }
+            }
+        }
+
+        public void Add(string packageName, string version, Action remove)
         {
             var packageVersion = SemanticVersion.Parse(version);
 
@@ -49,6 +75,14 @@ namespace PackageVersionUpdater
             .OrderBy(v => v.Key)
             .Select(v => (v.Key, v.Value));
 
+        public IEnumerable<string> Keys => _versions.Keys;
+
+        public IEnumerable<string> Values => _versions.Values.Select(v => v.ToFullString());
+
+        public int Count => _versions.Count;
+
+        public string this[string key] => _versions[key].ToFullString();
+
         public void CreatePackageVersionFile()
         {
             var versions = Packages
@@ -66,5 +100,29 @@ namespace PackageVersionUpdater
             _remove.Clear();
 
         }
+
+        public bool ContainsKey(string key) => _versions.ContainsKey(key);
+
+        public bool TryGetValue(string key, [MaybeNullWhen(false)] out string value)
+        {
+            if (_versions.TryGetValue(key, out var result))
+            {
+                value = result.ToFullString();
+                return true;
+            }
+
+            value = null;
+            return false;
+        }
+
+        public IEnumerator<KeyValuePair<string, string>> GetEnumerator()
+        {
+            foreach (var item in _versions)
+            {
+                yield return new KeyValuePair<string, string>(item.Key, item.Value.ToFullString());
+            }
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

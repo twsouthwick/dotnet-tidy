@@ -8,13 +8,13 @@ using System.Threading.Tasks;
 
 namespace PackageVersionUpdater
 {
-    public class CentralPackageUpdater : IApplication
+    public class RemoveCentralPackageManagementUpdater : IApplication
     {
         private readonly Registrar _registrar;
         private readonly ILogger<CentralPackageUpdater> _logger;
         private readonly UpdaterOptions _options;
 
-        public CentralPackageUpdater(Registrar registrar, ILogger<CentralPackageUpdater> logger, IOptions<UpdaterOptions> options)
+        public RemoveCentralPackageManagementUpdater(Registrar registrar, ILogger<CentralPackageUpdater> logger, IOptions<UpdaterOptions> options)
         {
             _registrar = registrar;
             _logger = logger;
@@ -47,33 +47,26 @@ namespace PackageVersionUpdater
 
             var collection = new NuGetReferenceCollection(_logger, Path.GetDirectoryName(_options.Path));
 
+            if (collection.Count == 0)
+            {
+                _logger.LogInformation("No centrally managed versions found");
+                return Task.CompletedTask;
+            }
+
             foreach (var project in projectCollection.LoadedProjects)
             {
                 var name = Path.GetFileName(project.FullPath);
 
-                _logger.LogInformation("Searching {Project} for NuGet references", name);
+                _logger.LogInformation("Updating {Project} for NuGet versions", name);
 
                 foreach (var reference in project.Items.Where(i => i.ItemType.Equals("PackageReference", System.StringComparison.OrdinalIgnoreCase)))
                 {
-                    var version = reference.GetMetadataValue("Version");
-                    var packageName = reference.EvaluatedInclude;
-
-                    if (!reference.IsImported)
+                    if (!reference.IsImported && collection.TryGetValue(reference.EvaluatedInclude, out var version))
                     {
-                        collection.Add(packageName, version, Remove);
-
-                        void Remove()
-                        {
-                            reference.RemoveMetadata("Version");
-                        }
+                        reference.SetMetadataValue("Version", version);
                     }
                 }
-            }
 
-            collection.CreatePackageVersionFile();
-
-            foreach (var project in projectCollection.LoadedProjects)
-            {
                 project.Save();
             }
 

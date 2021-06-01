@@ -24,14 +24,20 @@ namespace PackageVersionUpdater
             alignCommand.AddOption(new Option<bool>("--verbose"));
             alignCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunMoveAsync);
 
-            var centralManagementCommand = new Command("centrally-managed");
+            var centralManagementCommand = new Command("enable-centrally-managed");
             centralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
             centralManagementCommand.AddOption(new Option<bool>("--verbose"));
             centralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
 
+            var removeCentralManagementCommand = new Command("remove-centrally-managed");
+            removeCentralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            removeCentralManagementCommand.AddOption(new Option<bool>("--verbose"));
+            removeCentralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RemoveCentral);
+
             var packageManagementCommand = new Command("packages")
             {
-                centralManagementCommand
+                centralManagementCommand,
+                removeCentralManagementCommand
             };
 
             var solutionCommand = new Command("sln")
@@ -60,11 +66,21 @@ namespace PackageVersionUpdater
                     });
                 }, verbose);
 
+            static Task RemoveCentral(FileInfo sln, bool verbose)
+                => RunAsync(services =>
+                {
+                    services.AddMSBuild();
+                    services.AddPackageReferenceUpdater(false, options =>
+                    {
+                        options.Path = sln.FullName;
+                    });
+                }, verbose);
+
             static Task RunNuGetAsync(FileInfo sln, bool verbose)
                 => RunAsync(services =>
                 {
                     services.AddMSBuild();
-                    services.AddPackageReferenceUpdater(options =>
+                    services.AddPackageReferenceUpdater(true, options =>
                     {
                         options.Path = sln.FullName;
                     });
