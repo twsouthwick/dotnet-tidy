@@ -24,20 +24,25 @@ namespace PackageVersionUpdater
             alignCommand.AddOption(new Option<bool>("--verbose"));
             alignCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunMoveAsync);
 
-            var centralManagementCommand = new Command("enable-centrally-managed");
-            centralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
-            centralManagementCommand.AddOption(new Option<bool>("--verbose"));
-            centralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
+            var enableCentralManagementCommand = new Command("enable");
+            enableCentralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
+            enableCentralManagementCommand.AddOption(new Option<bool>("--verbose"));
+            enableCentralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RunNuGetAsync);
 
-            var removeCentralManagementCommand = new Command("remove-centrally-managed");
+            var removeCentralManagementCommand = new Command("disable");
             removeCentralManagementCommand.AddArgument(new Argument<FileInfo>("sln").ExistingOnly());
             removeCentralManagementCommand.AddOption(new Option<bool>("--verbose"));
             removeCentralManagementCommand.Handler = CommandHandler.Create<FileInfo, bool>(RemoveCentral);
 
+            var centralManagementCommand = new Command("centrally-managed")
+            {
+                enableCentralManagementCommand,
+                removeCentralManagementCommand
+            };
+
             var packageManagementCommand = new Command("packages")
             {
-                centralManagementCommand,
-                removeCentralManagementCommand
+                centralManagementCommand
             };
 
             var solutionCommand = new Command("sln")
